@@ -1,0 +1,92 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sharp COCORO Air",
+        "description": "Enter your Sharp Members EU account credentials.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Sharp COCORO Air",
+        "description": "Your session has expired. Please enter your credentials again.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "cannot_connect": "Cannot connect to Sharp cloud",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This account is already configured",
+      "reauth_successful": "Re-authentication successful"
+    }
+  },
+  "entity": {
+    "fan": {
+      "air_purifier": {
+        "name": "Air Purifier",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "Auto",
+              "night": "Night",
+              "pollen": "Pollen",
+              "silent": "Silent",
+              "medium": "Medium",
+              "high": "High",
+              "ai_auto": "AI Auto",
+              "realize": "Realize"
+            }
+          }
+        }
+      }
+    },
+    "switch": {
+      "humidification": {
+        "name": "Humidification"
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Temperature"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "power_consumption": {
+        "name": "Power Consumption"
+      },
+      "energy": {
+        "name": "Energy"
+      },
+      "dust": {
+        "name": "Dust Level"
+      },
+      "smell": {
+        "name": "Smell Level"
+      },
+      "pci_sensor": {
+        "name": "PCI Sensor"
+      },
+      "light_sensor": {
+        "name": "Light Sensor"
+      },
+      "filter_usage": {
+        "name": "Filter Usage"
+      },
+      "cleaning_mode": {
+        "name": "Cleaning Mode"
+      },
+      "airflow": {
+        "name": "Airflow"
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+"""Base entity for Sharp COCORO Air."""
+from __future__ import annotations
+
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN
+from .coordinator import SharpCocoroAirCoordinator
+
+
+class SharpCocoroAirEntity(CoordinatorEntity[SharpCocoroAirCoordinator]):
+    """Base entity for Sharp COCORO Air devices."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: SharpCocoroAirCoordinator, device_id: str) -> None:
+        super().__init__(coordinator)
+        self._device_id = device_id
+
+    @property
+    def device_data(self) -> dict:
+        """Return the full device dict from coordinator data."""
+        return self.coordinator.data.get(self._device_id, {})
+
+    @property
+    def device_properties(self) -> dict:
+        """Return the decoded properties dict."""
+        return self.device_data.get("properties", {})
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info to group entities under one device."""
+        data = self.device_data
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=data.get("name", "Sharp Air Purifier"),
+            manufacturer="Sharp",
+            model=data.get("model"),
+            sw_version=self.device_properties.get("firmware"),
+        )
+
+    @property
+    def available(self) -> bool:
+        """Return True if the device is in coordinator data."""
+        return super().available and self._device_id in self.coordinator.data
