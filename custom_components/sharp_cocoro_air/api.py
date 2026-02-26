@@ -159,8 +159,8 @@ def decode_echonet_property(hex_string: str) -> dict:
             result["operation_mode"] = ECHONET_OPERATION_MODES.get(
                 f3[4], f"0x{f3[4]:02X}"
             )
-        if len(f3) >= 13:
-            result["humidify"] = f3[12] == 0xFF
+        if len(f3) >= 16:
+            result["humidify"] = f3[15] == 0xFF
 
     return result
 
