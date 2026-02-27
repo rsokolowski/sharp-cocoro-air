@@ -28,6 +28,19 @@
       "reauth_successful": "Re-authentication successful"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sharp COCORO Air Settings",
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to fetch device data from the Sharp cloud (15–300 seconds)."
+        }
+      }
+    }
+  },
   "entity": {
     "fan": {
       "air_purifier": {

@@ -1,15 +1,16 @@
 """Constants for the Sharp COCORO Air integration."""
 
-from datetime import timedelta
-
 from homeassistant.const import Platform
 
 DOMAIN = "sharp_cocoro_air"
 PLATFORMS: list[Platform] = [Platform.FAN, Platform.SENSOR, Platform.SWITCH]
-SCAN_INTERVAL = timedelta(seconds=60)
 
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
+CONF_SCAN_INTERVAL = "scan_interval"
+DEFAULT_SCAN_INTERVAL = 60
+MIN_SCAN_INTERVAL = 15
+MAX_SCAN_INTERVAL = 300
 
 # Maps API mode key -> display name
 OPERATION_MODES = {

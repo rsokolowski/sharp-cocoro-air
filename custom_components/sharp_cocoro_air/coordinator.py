@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,7 +12,14 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SharpAPI, SharpApiError, SharpAuthError, SharpConnectionError
-from .const import CONF_EMAIL, CONF_PASSWORD, DOMAIN, OPERATION_MODES, SCAN_INTERVAL
+from .const import (
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    OPERATION_MODES,
+)
 
 STARTUP_RETRIES = 3
 STARTUP_RETRY_DELAY = 10
@@ -28,12 +36,15 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
     config_entry: ConfigEntry
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+        scan_seconds = config_entry.options.get(
+            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+        )
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             config_entry=config_entry,
-            update_interval=SCAN_INTERVAL,
+            update_interval=timedelta(seconds=scan_seconds),
         )
         self.api = SharpAPI(
             config_entry.data[CONF_EMAIL],

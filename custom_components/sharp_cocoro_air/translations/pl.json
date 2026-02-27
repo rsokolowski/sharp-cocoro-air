@@ -28,6 +28,19 @@
       "reauth_successful": "Ponowne logowanie zakończone sukcesem"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ustawienia Sharp COCORO Air",
+        "data": {
+          "scan_interval": "Częstotliwość odpytywania (sekundy)"
+        },
+        "data_description": {
+          "scan_interval": "Jak często pobierać dane z chmury Sharp (15–300 sekund)."
+        }
+      }
+    }
+  },
   "entity": {
     "fan": {
       "air_purifier": {
