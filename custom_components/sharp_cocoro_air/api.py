@@ -30,6 +30,7 @@ BROWSER_UA = (
     "Mozilla/5.0 (Linux; Android 14) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Mobile"
 )
+HA_APP_NAME = "spremote_ha_eu:1:1.0.0"
 
 # ECHONET Lite mode mappings
 ECHONET_OPERATION_MODES = {
@@ -172,21 +173,29 @@ class SharpAPI:
         self.email = email
         self.password = password
         self.terminal_app_id: str | None = None
-        self._client = httpx.Client(
-            timeout=30,
-            headers={
-                "User-Agent": USER_AGENT,
-                "Content-Type": "application/json; charset=utf-8",
-                "Accept": "application/json",
-            },
-        )
+        self._client: httpx.Client | None = None
+
+    def _ensure_client(self) -> httpx.Client:
+        """Create httpx client lazily (avoids blocking the event loop on init)."""
+        if self._client is None:
+            self._client = httpx.Client(
+                timeout=30,
+                headers={
+                    "User-Agent": USER_AGENT,
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Accept": "application/json",
+                },
+            )
+        return self._client
 
     def close(self) -> None:
         """Close the HTTP client."""
-        self._client.close()
+        if self._client is not None:
+            self._client.close()
 
     def full_init(self) -> None:
         """Perform the complete initialization sequence."""
+        self._ensure_client()
         self.login()
         self.get_user_info()
         self.register_terminal()
@@ -204,11 +213,12 @@ class SharpAPI:
         query = "&".join(parts)
         url = f"{API_BASE}{path}?{query}"
 
+        client = self._ensure_client()
         try:
             if method == "GET":
-                resp = self._client.get(url)
+                resp = client.get(url)
             else:
-                resp = self._client.post(url, json=body)
+                resp = client.post(url, json=body)
         except httpx.ConnectError as err:
             raise SharpConnectionError(f"Connection failed: {err}") from err
         except httpx.TimeoutException as err:
@@ -314,11 +324,12 @@ class SharpAPI:
             "os": "Android",
             "osVersion": "14",
             "pushId": "",
-            "appName": "spremote_a_eu:1:1.0.4",
+            "appName": HA_APP_NAME,
         }
         url = f"{API_BASE}setting/terminal?appSecret={APP_SECRET}"
+        client = self._ensure_client()
         try:
-            resp = self._client.post(url, json=body)
+            resp = client.post(url, json=body)
         except (httpx.ConnectError, httpx.TimeoutException) as err:
             raise SharpConnectionError(
                 f"Terminal registration failed: {err}"
@@ -342,16 +353,16 @@ class SharpAPI:
     def pair_boxes(self) -> None:
         """Pair our terminalAppId with all boxes.
 
-        Removes only script-generated TAIs (appName=None) to stay within
-        the 5-TAI limit, never touches entries from the real Android app.
+        Unpairs all other TAIs to stay within the 5-TAI limit.
+        The API doesn't expose enough info to distinguish our old TAIs
+        from the phone app, so we clean all and let the phone re-pair
+        automatically on its next launch.
         """
+        client = self._ensure_client()
         boxes = self.get_boxes()
         for box in boxes.get("box", []):
             box_id = box["boxId"]
-            # Remove stale script-generated TAIs (appName is None)
             for tai in box.get("terminalAppInfo", []):
-                if tai.get("appName") is not None:
-                    continue  # keep real app entries
                 if tai["terminalAppId"] == self.terminal_app_id:
                     continue  # keep our own
                 url = (
@@ -361,16 +372,16 @@ class SharpAPI:
                     f"&boxId={box_id}&houseFlag=true"
                 )
                 try:
-                    self._client.put(url)
+                    client.put(url)
                 except (httpx.ConnectError, httpx.TimeoutException):
-                    _LOGGER.warning("Failed to unpair stale TAI %s", tai["terminalAppId"])
+                    _LOGGER.warning("Failed to unpair TAI %s", tai["terminalAppId"])
             # Pair our TAI
             url = (
                 f"{API_BASE}setting/pairing/"
                 f"?appSecret={APP_SECRET}&boxId={box_id}&houseFlag=true"
             )
             try:
-                resp = self._client.post(url, content=b"")
+                resp = client.post(url, content=b"")
             except (httpx.ConnectError, httpx.TimeoutException) as err:
                 _LOGGER.warning("Failed to pair box %s: %s", box_id, err)
                 continue
