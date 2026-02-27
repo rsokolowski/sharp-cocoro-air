@@ -1,0 +1,92 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sharp COCORO Air",
+        "description": "Wprowadź dane logowania do konta Sharp Members EU.",
+        "data": {
+          "email": "Email",
+          "password": "Hasło"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ponowne logowanie Sharp COCORO Air",
+        "description": "Sesja wygasła. Wprowadź ponownie dane logowania.",
+        "data": {
+          "email": "Email",
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy email lub hasło",
+      "cannot_connect": "Nie można połączyć z chmurą Sharp",
+      "unknown": "Wystąpił nieoczekiwany błąd"
+    },
+    "abort": {
+      "already_configured": "To konto jest już skonfigurowane",
+      "reauth_successful": "Ponowne logowanie zakończone sukcesem"
+    }
+  },
+  "entity": {
+    "fan": {
+      "air_purifier": {
+        "name": "Oczyszczacz powietrza",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "Automatyczny",
+              "night": "Nocny",
+              "pollen": "Pyłki",
+              "silent": "Cichy",
+              "medium": "Średni",
+              "high": "Wysoki",
+              "ai_auto": "AI Auto",
+              "realize": "Realize"
+            }
+          }
+        }
+      }
+    },
+    "switch": {
+      "humidification": {
+        "name": "Nawilżanie"
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Temperatura"
+      },
+      "humidity": {
+        "name": "Wilgotność"
+      },
+      "power_consumption": {
+        "name": "Pobór mocy"
+      },
+      "energy": {
+        "name": "Energia"
+      },
+      "dust": {
+        "name": "Poziom kurzu"
+      },
+      "smell": {
+        "name": "Poziom zapachu"
+      },
+      "pci_sensor": {
+        "name": "Sensor PCI"
+      },
+      "light_sensor": {
+        "name": "Sensor światła"
+      },
+      "filter_usage": {
+        "name": "Zużycie filtra"
+      },
+      "cleaning_mode": {
+        "name": "Tryb czyszczenia"
+      },
+      "airflow": {
+        "name": "Przepływ powietrza"
+      }
+    }
+  }
+}
