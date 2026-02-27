@@ -1,6 +1,8 @@
 """DataUpdateCoordinator for Sharp COCORO Air."""
 from __future__ import annotations
 
+import asyncio
+import copy
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -8,10 +10,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-import copy
-
 from .api import SharpAPI, SharpApiError, SharpAuthError, SharpConnectionError
 from .const import CONF_EMAIL, CONF_PASSWORD, DOMAIN, OPERATION_MODES, SCAN_INTERVAL
+
+STARTUP_RETRIES = 3
+STARTUP_RETRY_DELAY = 10
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,13 +41,27 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
         )
 
     async def _async_setup(self) -> None:
-        """Perform initial login sequence (runs once during first refresh)."""
-        try:
-            await self.hass.async_add_executor_job(self.api.full_init)
-        except SharpAuthError as err:
-            raise ConfigEntryAuthFailed("Sharp login failed") from err
-        except SharpConnectionError as err:
-            raise UpdateFailed(f"Cannot connect to Sharp cloud: {err}") from err
+        """Perform initial login sequence (runs once during first refresh).
+
+        Retries on transient connection errors during HA startup when
+        DNS/network may not be ready yet.
+        """
+        last_err: Exception | None = None
+        for attempt in range(1, STARTUP_RETRIES + 1):
+            try:
+                await self.hass.async_add_executor_job(self.api.full_init)
+                return
+            except SharpAuthError as err:
+                raise ConfigEntryAuthFailed("Sharp login failed") from err
+            except (SharpConnectionError, SharpApiError) as err:
+                last_err = err
+                if attempt < STARTUP_RETRIES:
+                    _LOGGER.warning(
+                        "Sharp cloud init attempt %d/%d failed: %s, retrying in %ds",
+                        attempt, STARTUP_RETRIES, err, STARTUP_RETRY_DELAY,
+                    )
+                    await asyncio.sleep(STARTUP_RETRY_DELAY)
+        raise UpdateFailed(f"Cannot connect to Sharp cloud: {last_err}") from last_err
 
     async def _async_update_data(self) -> dict[str, dict]:
         """Fetch device data from Sharp cloud API."""
