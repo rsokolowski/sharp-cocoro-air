@@ -353,10 +353,10 @@ class SharpAPI:
     def pair_boxes(self) -> None:
         """Pair our terminalAppId with all boxes.
 
-        Unpairs all other TAIs to stay within the 5-TAI limit.
-        The API doesn't expose enough info to distinguish our old TAIs
-        from the phone app, so we clean all and let the phone re-pair
-        automatically on its next launch.
+        Cleans up stale TAIs to stay within the 5-TAI limit:
+        - appName=None: orphaned script-generated TAIs
+        - appName starting with "spremote_ha_eu": old HA integration TAIs
+        Never touches the real phone app entries (spremote_a_eu).
         """
         client = self._ensure_client()
         boxes = self.get_boxes()
@@ -365,6 +365,9 @@ class SharpAPI:
             for tai in box.get("terminalAppInfo", []):
                 if tai["terminalAppId"] == self.terminal_app_id:
                     continue  # keep our own
+                app_name = tai.get("appName")
+                if app_name is not None and not app_name.startswith("spremote_ha_eu"):
+                    continue  # keep phone app and other real entries
                 url = (
                     f"{API_BASE}setting/pairing/"
                     f"?appSecret={APP_SECRET}"
