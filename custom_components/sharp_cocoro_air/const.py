@@ -21,7 +21,7 @@ OPERATION_MODES = {
     "medium": "Medium",
     "high": "High",
     "ai_auto": "AI Auto",
-    "realize": "Turbo Clean",
+    "realize": "Realize",
 }
 
 # Reverse: display name -> API key (for decoding current mode from ECHONET data)

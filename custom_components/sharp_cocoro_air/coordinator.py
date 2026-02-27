@@ -2,16 +2,24 @@
 from __future__ import annotations
 
 import asyncio
-import copy
+import dataclasses
 import logging
 from datetime import timedelta
+
+from aiosharp_cocoro_air import (
+    Device,
+    SharpApiError,
+    SharpAuthError,
+    SharpCOCOROAir,
+    SharpConnectionError,
+)
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import SharpAPI, SharpApiError, SharpAuthError, SharpConnectionError
 from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
@@ -27,10 +35,10 @@ STARTUP_RETRY_DELAY = 10
 _LOGGER = logging.getLogger(__name__)
 
 
-class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
+class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, Device]]):
     """Coordinator that polls Sharp cloud API for device data.
 
-    self.data maps device_id (str) -> device dict from SharpAPI.get_devices().
+    self.data maps device_id (str) -> Device dataclass from the PyPI library.
     """
 
     config_entry: ConfigEntry
@@ -46,9 +54,11 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
             config_entry=config_entry,
             update_interval=timedelta(seconds=scan_seconds),
         )
-        self.api = SharpAPI(
+        session = async_get_clientsession(hass)
+        self.api = SharpCOCOROAir(
             config_entry.data[CONF_EMAIL],
             config_entry.data[CONF_PASSWORD],
+            session=session,
         )
 
     async def _async_setup(self) -> None:
@@ -60,7 +70,7 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
         last_err: Exception | None = None
         for attempt in range(1, STARTUP_RETRIES + 1):
             try:
-                await self.hass.async_add_executor_job(self.api.full_init)
+                await self.api.authenticate()
                 return
             except SharpAuthError as err:
                 raise ConfigEntryAuthFailed("Sharp login failed") from err
@@ -74,16 +84,16 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
                     await asyncio.sleep(STARTUP_RETRY_DELAY)
         raise UpdateFailed(f"Cannot connect to Sharp cloud: {last_err}") from last_err
 
-    async def _async_update_data(self) -> dict[str, dict]:
+    async def _async_update_data(self) -> dict[str, Device]:
         """Fetch device data from Sharp cloud API."""
         try:
-            devices = await self.hass.async_add_executor_job(self.api.get_devices)
+            devices = await self.api.get_devices()
         except SharpAuthError:
             # Session expired — attempt automatic re-login
             _LOGGER.info("Sharp session expired, attempting re-login")
             try:
-                await self.hass.async_add_executor_job(self.api.full_init)
-                devices = await self.hass.async_add_executor_job(self.api.get_devices)
+                await self.api.authenticate()
+                devices = await self.api.get_devices()
             except SharpAuthError as err:
                 raise ConfigEntryAuthFailed("Re-login failed") from err
             except SharpConnectionError as err:
@@ -95,12 +105,12 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
                 f"Error communicating with Sharp cloud: {err}"
             ) from err
 
-        return {str(dev["device_id"]): dev for dev in devices}
+        return {dev.device_id: dev for dev in devices}
 
     async def _async_control(self, fn, *args) -> None:
         """Run a control command with error handling."""
         try:
-            await self.hass.async_add_executor_job(fn, *args)
+            await fn(*args)
         except SharpAuthError as err:
             raise ConfigEntryAuthFailed("Session expired") from err
         except (SharpConnectionError, SharpApiError) as err:
@@ -110,30 +120,35 @@ class SharpCocoroAirCoordinator(DataUpdateCoordinator[dict[str, dict]]):
         """Apply optimistic state update and notify entities immediately.
 
         The cloud API has a delay before reflecting state changes,
-        so we update coordinator.data in-place with the expected values.
+        so we update coordinator.data with the expected values using
+        dataclasses.replace() on frozen Device/DeviceProperties instances.
         """
-        data = copy.deepcopy(self.data)
+        if not self.data:
+            return
+        data = dict(self.data)
         if device_id in data:
-            data[device_id]["properties"].update(props)
+            old = data[device_id]
+            new_props = dataclasses.replace(old.properties, **props)
+            data[device_id] = dataclasses.replace(old, properties=new_props)
             self.async_set_updated_data(data)
 
-    async def async_power_on(self, device: dict) -> None:
+    async def async_power_on(self, device: Device) -> None:
         """Turn device on."""
         await self._async_control(self.api.power_on, device)
-        self._optimistic_update(str(device["device_id"]), power="on")
+        self._optimistic_update(device.device_id, power="on")
 
-    async def async_power_off(self, device: dict) -> None:
+    async def async_power_off(self, device: Device) -> None:
         """Turn device off."""
         await self._async_control(self.api.power_off, device)
-        self._optimistic_update(str(device["device_id"]), power="off")
+        self._optimistic_update(device.device_id, power="off")
 
-    async def async_set_mode(self, device: dict, mode: str) -> None:
+    async def async_set_mode(self, device: Device, mode: str) -> None:
         """Set operation mode."""
         await self._async_control(self.api.set_mode, device, mode)
         display = OPERATION_MODES.get(mode, mode)
-        self._optimistic_update(str(device["device_id"]), operation_mode=display)
+        self._optimistic_update(device.device_id, operation_mode=display)
 
-    async def async_set_humidify(self, device: dict, on: bool) -> None:
+    async def async_set_humidify(self, device: Device, on: bool) -> None:
         """Toggle humidification."""
         await self._async_control(self.api.set_humidify, device, on)
-        self._optimistic_update(str(device["device_id"]), humidify=on)
+        self._optimistic_update(device.device_id, humidify=on)

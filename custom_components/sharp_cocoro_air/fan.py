@@ -70,12 +70,18 @@ class SharpAirPurifierFan(SharpCocoroAirEntity, FanEntity):
         preset_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
-        await self.coordinator.async_power_on(self.device_data)
+        if (device := self.device_data) is None:
+            return
+        await self.coordinator.async_power_on(device)
         if preset_mode is not None:
-            await self.coordinator.async_set_mode(self.device_data, preset_mode)
+            await self.coordinator.async_set_mode(device, preset_mode)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.async_power_off(self.device_data)
+        if (device := self.device_data) is None:
+            return
+        await self.coordinator.async_power_off(device)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        await self.coordinator.async_set_mode(self.device_data, preset_mode)
+        if (device := self.device_data) is None:
+            return
+        await self.coordinator.async_set_mode(device, preset_mode)

@@ -8,7 +8,7 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 
-from .api import SharpAPI, SharpAuthError, SharpConnectionError
+from aiosharp_cocoro_air import SharpAuthError, SharpCOCOROAir, SharpConnectionError
 from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
@@ -44,9 +44,11 @@ class SharpCocoroAirConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            api = SharpAPI(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
             try:
-                await self.hass.async_add_executor_job(api.full_init)
+                async with SharpCOCOROAir(
+                    user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
+                ) as client:
+                    await client.authenticate()
             except SharpAuthError:
                 errors["base"] = "invalid_auth"
             except SharpConnectionError:
@@ -61,8 +63,6 @@ class SharpCocoroAirConfigFlow(ConfigFlow, domain=DOMAIN):
                     title=f"Sharp COCORO Air ({user_input[CONF_EMAIL]})",
                     data=user_input,
                 )
-            finally:
-                api.close()
 
         return self.async_show_form(
             step_id="user",
@@ -83,9 +83,11 @@ class SharpCocoroAirConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            api = SharpAPI(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
             try:
-                await self.hass.async_add_executor_job(api.full_init)
+                async with SharpCOCOROAir(
+                    user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
+                ) as client:
+                    await client.authenticate()
             except SharpAuthError:
                 errors["base"] = "invalid_auth"
             except SharpConnectionError:
@@ -98,8 +100,6 @@ class SharpCocoroAirConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._get_reauth_entry(),
                     data_updates=user_input,
                 )
-            finally:
-                api.close()
 
         return self.async_show_form(
             step_id="reauth_confirm",
